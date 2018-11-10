@@ -17,12 +17,16 @@ state("HotlineGL")
 	ushort showdown :    "HotlineGL.exe", 0x9F7730;
 	ushort prankcall :   "HotlineGL.exe", 0x9F7740;
 	ushort resolution :  "HotlineGL.exe", 0x9F7774;
+	ushort decadence :   "HotlineGL.exe", 0x9F7584;
+	ushort neighbors :   "HotlineGL.exe", 0x9F7670;
+	ushort deadline :    "HotlineGL.exe", 0x9F75E4;
 }
 
 init
 {
 	vars.skip_next = false;
-	vars.counter = 0;
+	vars.split_next = false;
+	vars.start = false;
 }
 
 startup
@@ -40,14 +44,15 @@ startup
 update
 {
 	if (current.room == current.tutorial) vars.skip_next = true;
-	if (old.grade == 0 && current.grade == 1) vars.counter++;
+	if (current.room == current.decadence || current.room == current.neighbors || current.room == current.deadline) vars.split_next = true;
+	if (old.fade == 0 && current.fade == 1 && current.select_index == 0 && ((current.room == current.menu) ||
+		(current.room == current.lvl_select && current.menu_state == 1))) {vars.start = true; vars.split_next = false;}
 }
 
 start
 {
-	if (old.fade == 0 && current.fade == 1 && current.select_index == 0 &&
-	((current.room == current.menu) || (current.room == current.lvl_select && current.menu_state == 1))) {
-		vars.counter = 0;
+	if (vars.start) {
+		vars.start = false;
 		return true;
 	}
 }
@@ -58,10 +63,14 @@ split
 		if (vars.skip_next) vars.skip_next = false;
 		else return true;
 	}
+	// decadence, neighbors, deadline
+	if (settings["3"] && old.grade == 0 && current.grade == 1 && vars.split_next) {
+		vars.split_next = false;
+		return true;
+	}
 	return ((settings["1"] && current.room == current.trauma && old.player_x >= -32 && current.player_x < -32) ||                         	// trauma
 		((settings["1"] || settings["3"]) && current.room == current.showdown && old.showdown_paper == 0 && current.showdown_paper == 1) || // showdown
 		(settings["1"] && current.room == current.prankcall && old.bike_climb <= 0.30 && current.bike_climb > 0.30) ||                      // prankcall
 		(current.room == current.resolution && old.bike_climb <= 0.30 && current.bike_climb > 0.30) ||                                      // end split
-		(settings["1"] && old.grade == 0 && current.grade == 1) ||                                                                          // grade splits
-		(settings["3"] && old.grade == 0 && current.grade == 1 && (vars.counter == 4 || vars.counter == 8 || vars.counter == 12)));         // decadence, neighbors, deadline
+		(settings["1"] && old.grade == 0 && current.grade == 1));                                                                           // grade splits
 }
