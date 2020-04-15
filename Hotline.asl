@@ -203,12 +203,8 @@ reset
 		if (current.time == 0) {
 			return true;
 		}
-		//	reset on Trauma 1
-		if (current.room == current.trauma1 && old.room != current.trauma1) {
-			return true;
-		}
 		//	reset in main menu
-		if (current.room > 0 && current.room == current.main_menu && old.room != current.main_menu) {
+		if (current.room > 0 && current.room == current.main_menu) {
 			return true;
 		}
 	}
