@@ -72,8 +72,8 @@ split {
 		if (foesLeft > 0 && current.isFoe5Dead) foesLeft--;
 		return foesLeft == 0;
 	}
-	if (settings["axe"] && !old.hasAxe && current.hasAxe) return true;
-	if (settings["hammer"] && !old.hasHammer && current.hasHammer) return true;
+	if (settings["axe"] && old.gameState != current.MAIN_MENU && !old.hasAxe && current.hasAxe) return true;
+	if (settings["hammer"] && old.gameState != current.MAIN_MENU && !old.hasHammer && current.hasHammer) return true;
 	if (settings["firstbattle"] && vars.firstBattle && old.gameState == current.MAP && current.gameState == current.BATTLE) {
 		vars.firstBattle = false;
 		return true;
