@@ -6,7 +6,7 @@ state("HotlineGL", "steam")
 	int grade :           "HotlineGL.exe", 0x7EC858, 8, 0x5AC, 4, 8;
 	int showdown_paper :  "HotlineGL.exe", 0xBFFCD8, 0x15CC, 8;
 	int time :            "HotlineGL.exe", 0xBFFCD8, 0x98C, 8;
-	int player_dead :	  "HotlineGL.exe", 0x9F5D78, 0x204, 4, 8;		//not used
+	//int player_dead :	  "HotlineGL.exe", 0x9F5D78, 0x204, 4, 8;		//not used
 	double player_x :     "HotlineGL.exe", 0x9F5DC0, 4, 0, 8, 8, 0x50;
 	double bike_climb :   "HotlineGL.exe", 0x9F66F4, 4, 0, 8, 8, 0x98;
 
@@ -26,11 +26,11 @@ state("HotlineGL", "steam")
 	ushort trauma_outro : "HotlineGL.exe", 0x9F76FC;
 	ushort assault :      "HotlineGL.exe", 0x9F7600;
 	ushort showdown :     "HotlineGL.exe", 0x9F7730;
-	ushort bikerFlat:     "HotlineGL.exe", 0x9F7748;		// not used
+	//ushort bikerFlat:     "HotlineGL.exe", 0x9F7748;		// not used
 	ushort prankcall :    "HotlineGL.exe", 0x9F7740;
 	ushort resolution :   "HotlineGL.exe", 0x9F7774;
 	ushort scorescreen :  "HotlineGL.exe", 0x9F75A8;
-	ushort gradescreen :  "HotlineGL.exe", 0x9F7728;		// not used
+	//ushort gradescreen :  "HotlineGL.exe", 0x9F7728;		// not used
 }
 
 state("HotlineGL", "gog")
@@ -61,11 +61,11 @@ state("HotlineGL", "gog")
 	ushort trauma_outro : "HotlineGL.exe", 0x96CC54;
 	ushort assault :      "HotlineGL.exe", 0x96CB58;
 	ushort showdown :     "HotlineGL.exe", 0x96CC88;
-	ushort bikerFlat:     "HotlineGL.exe", 0x96CCA0;		// not used
+	//ushort bikerFlat:     "HotlineGL.exe", 0x96CCA0;		// not used
 	ushort prankcall :    "HotlineGL.exe", 0x96CC98;
 	ushort resolution :   "HotlineGL.exe", 0x96CCCC;
 	ushort scorescreen :  "HotlineGL.exe", 0x96CB00;
-	ushort gradescreen :  "HotlineGL.exe", 0x9F7728;		//not used		//don't have this for gog//
+	//ushort gradescreen :  "HotlineGL.exe", 0x9F7728;		//not used		//don't have this for gog//
 }
 
 init{
@@ -93,8 +93,6 @@ startup
 	settings.SetToolTip("IL", "*not supported in GoG version* \nThis starts and stops Real Time and stop Game Time on all levels that have score screens. \nTo display IGT, change your active comparison or your layout to game Time.");
 	settings.Add("igt", false, "Display IGT");
 	settings.SetToolTip("igt", "This setting does nothing, but I hereby inform you that the splitter will ALWAYS track IGT, so you can display it during full game runs by adding a timer that displays Game Time (as opposed to Real Time)");
-	settings.Add("death", false, "Track deaths in IGT");
-	settings.SetToolTip("death", "This setting will track how much time you lost to a death or a level restart and add it to your IGT");	
 	
 	// any%
 	vars.split1 = false;
@@ -106,8 +104,6 @@ startup
 	// All Levels
 	vars.startAL = false;
 	vars.afterMetro = false;
-	// track Death
-	vars.deathIGT = 0;
 }
 
 update
@@ -145,18 +141,6 @@ update
 		//	All Levels
 		if (current.room == current.main_menu) {
 			vars.startAL = true;
-			vars.deathIGT = 0;
-		}
-	}
-	
-	//	tracking deaths in gameTime
-	if (settings["death"]) {
-		//	add death to deathIGT
-		if (current.time < old.time) {
-			vars.deathIGT += old.time - current.time;
-		}
-		//	reset deathIGT
-		if (current.time == 0 && old.time != 0 && old.room != current.ig_menu) {
 			vars.deathIGT = 0;
 		}
 	}
@@ -213,7 +197,7 @@ reset
 exit
 {
 	//	Reset on game exit escept during Trauma Skip
-	if (!vars.traumaSkip) {
+	if (!vars.traumaSkip && settings.ResetEnabled) {
 		new TimerModel() { CurrentState = timer }.Reset();
 	}
 }
@@ -312,5 +296,5 @@ isLoading
 
 gameTime
 {
-	return TimeSpan.FromMilliseconds(Convert.ToInt32((current.time+vars.deathIGT)*1000/60));
+	return TimeSpan.FromMilliseconds(Convert.ToInt32((current.time)*1000/60));
 }
