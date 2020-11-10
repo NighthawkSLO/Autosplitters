@@ -163,9 +163,6 @@ startup
 	settings.Add("death", false, "Track deaths in IGT");
 	settings.SetToolTip("death", "This setting will track how much time you lost to a death or a level restart and add it to your IGT");
 	
-	settings.Add("death", false, "Track deaths in IGT");
-	settings.SetToolTip("death", "This setting will track how much time you lost to a death or a level restart and add it to your IGT");
-	
 	// any%
 	vars.split1 = false;
 	vars.split2 = false;
