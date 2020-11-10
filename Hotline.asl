@@ -7,6 +7,7 @@ state("HotlineGL", "steam")
 	int showdown_paper :  "HotlineGL.exe", 0xBFFCD8, 0x15CC, 8;
 	int time :            "HotlineGL.exe", 0xBFFCD8, 0x98C, 8;
 	int player_dead :	  "HotlineGL.exe", 0x9F5D78, 0x204, 4, 8;
+	int biker_dead :	  "HotlineGL.exe", 0x9F5D78, 0x204, 4, 8;
 	double player_x :     "HotlineGL.exe", 0x9F5DC0, 4, 0, 8, 8, 0x50;
 	double bike_climb :   "HotlineGL.exe", 0x9F66F4, 4, 0, 8, 8, 0x98;
 
@@ -54,6 +55,7 @@ state("HotlineGL", "gog")
 	int showdown_paper :  "HotlineGL.exe", 0x96BB6C, 8;
 	int time :            "HotlineGL.exe", 0xB75254, 0x984, 8;
 	int player_dead :	  "HotlineGL.exe", 0x96B5CC, 0x204, 4, 8;
+	int biker_dead :	  "HotlineGL.exe", 0x96B2E8, 0x204, 4, 8;
 	double player_x :     "HotlineGL.exe", 0x96B330, 4, 0, 8, 8, 0x50;
 	double bike_climb :   "HotlineGL.exe", 0x96BC64, 4, 4, 8, 8, 0x98;
 
@@ -93,8 +95,38 @@ state("HotlineGL", "gog")
 }
 
 init{
+	ProcessModuleWow64Safe module = modules.Single(x => String.Equals(x.ModuleName, "HotlineGL.exe", StringComparison.OrdinalIgnoreCase));
+	
+	byte[] exe512HashBytes = new byte[0];
+	using (var sha = System.Security.Cryptography.SHA512.Create())
+	{
+		using (var s = File.Open(module.FileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+		{
+			exe512HashBytes = sha.ComputeHash(s); 
+		} 
+	}
+    string exeHash = exe512HashBytes.Select(x => x.ToString("X2")).Aggregate((a, b) => a + b);
+
+    //print("init{} - read SHA512-Hash: " + exeHash);
+	
+	switch(exeHash) {
+        case "BD2C5AA66CB09D0B8152740D2B87EF87D74A72C803E6F8A4ECB777EE9086B0018899A8261A85DB06A194DF73A370EC4C5706E68D502E1BD9CEAC3DB12451BAD9":
+            version = "steam";
+            break;
+		case "264F2EB051089A38256CB80C3AB90DD1F29AFF25DDD453F97AD341ACBB3EFC14DE64E56032E905898ABDA1F4E42CB935EF975514F8CC94B27555AEB6B7DD8915":
+            version = "gog";
+            break;
+        default:
+            version = "unsupported";
+			print("This version of Hotline is not supported by the autosplitter. Sorry :(");
+            break;
+    }
+	
+	/*
 	if		(modules.First().ModuleMemorySize == 12718080)	{version = "steam";}
 	else if	(modules.First().ModuleMemorySize == 12140544)	{version = "gog";}
+	else {throw new Exception("triggerInit{} - pointer failed or returned a null. " + "Initialization is not done yet!");}
+	*/
 }
 
 startup
@@ -113,10 +145,7 @@ startup
 		settings.Add("any%_ss", false, "Start/Stop", "any%");
 		settings.SetToolTip("any%_ss", "Just start and end split");
 		settings.Add("any%_parts", false, "Parts", "any%");
-			settings.Add("any%_parts_u", false, "Parts (Urin)", "any%_parts");
-			settings.SetToolTip("any%_parts_u", "Splits in the intro of Tension, Push It, Trauma and after the Part 5 screen");
-			settings.Add("any%_parts_j", false, "Parts (Jack)", "any%_parts");
-			settings.SetToolTip("any%_parts_j", "Splits in the intro of Tension, Push It, Trauma and before the Part 5 screen");
+		settings.SetToolTip("any%_parts", "Splits in the intro of Tension, Push It, Trauma and before the Part 5 screen");
 		settings.Add("any%_lvls", false,  "Levels", "any%");
 		settings.SetToolTip("any%_lvls", "Splits on every Grade, Trauma doors, Showdown picture, and Prankcall bike");
 		settings.Add("any%_floors", false, "Floors", "any%");
@@ -131,6 +160,9 @@ startup
 	settings.Add("igt", false, "Display IGT");
 	settings.SetToolTip("igt", "This setting does nothing, but I hereby inform you that the splitter will ALWAYS track IGT, so you can display it during full game runs by adding a timer that displays Game Time (as opposed to Real Time)");
   
+	settings.Add("death", false, "Track deaths in IGT");
+	settings.SetToolTip("death", "This setting will track how much time you lost to a death or a level restart and add it to your IGT");
+	
 	settings.Add("death", false, "Track deaths in IGT");
 	settings.SetToolTip("death", "This setting will track how much time you lost to a death or a level restart and add it to your IGT");
 	
@@ -179,6 +211,12 @@ update
 			vars.traumaSkip = false;
 		}
 	}
+	
+	// startRoom
+	if (settings["IL"] && ( (old.room == current.lvl_intro && current.room != current.lvl_intro) || (old.room == current.biker_intro && current.room != current.biker_intro) ) ) {
+		vars.startRoom = current.room;
+	}
+	
 	//for debugging
 	//if (old.room != current.room) {print(current.room.ToString());}
 }
@@ -188,6 +226,7 @@ start
 	//	start All Levels
 	if (settings["AL"] && current.room == current.main_menu && old.fade == 0 && current.fade == 1 && current.select_index == 0) {
 		vars.afterMetro = false;
+		vars.onLevel = false;
 		vars.deathIGT = 0;
 		vars.maxTime = 0;
 		return true;
@@ -208,8 +247,7 @@ start
 	}
 	
 	//	start ILs
-	if ((settings["IL"])&& current.time > 0){
-		vars.startRoom = current.room;
+	if ((settings["IL"])&& current.time > 0 && vars.startRoom != 0){
 		vars.deathIGT = 0;
 		vars.maxTime = 0;
 		return true;
@@ -220,7 +258,6 @@ reset
 {
 	// reset All Levels - in main menu or on game exit
 	if ((settings["AL"] || !vars.afterMetro) && vars.gameRunning && current.room == current.main_menu && old.room != current.main_menu) {
-		print("hello");
 		return true;
 	}
 	
@@ -232,6 +269,7 @@ reset
 		}
 		//	reset in main menu
 		if (current.room == current.main_menu) {
+			vars.startRoom = 0;
 			return true;
 		}
 	}
@@ -280,12 +318,8 @@ split
 			vars.split3 = false;
 			return true;
 		}
-		//	split Part 4 Urin
-		if (settings["any%_parts_u"] && vars.split4 && old.room == current.part_screen && current.room != current.part_screen) {
-			vars.split4 = false;
-			return true;
-		}// split Part 4 Jack
-		if (settings["any%_parts_j"] && vars.split4 && old.room != current.part_screen && current.room == current.part_screen) {
+		// split Part 4
+		if (vars.split4 && old.room != current.part_screen && current.room == current.part_screen) {
 			vars.split4 = false;
 			return true;
 		}
@@ -338,7 +372,8 @@ split
 	}
 	
 	//	split ILs FULL	//
-	if (settings["IL_level"] && current.room == current.score_screen && old.room != current.score_screen && vars.gameRunning) {
+	if (settings["IL"] && current.room == current.score_screen && old.room != current.score_screen && vars.gameRunning) {
+		vars.startRoom = 0;
 		return true;
 	}
 	//	split IL FLOORS	//
@@ -361,7 +396,7 @@ gameTime
 			vars.maxTime = current.time;
 		}
 		// adding death to IGT
-		if (old.player_dead == 1 && current.player_dead == 0) {
+		if ( (old.player_dead == 1 && current.player_dead == 0) || (old.biker_dead == 1 && current.biker_dead == 0)) {
 			vars.deathIGT += vars.maxTime - current.time;
 			vars.maxTime = current.time;
 		}
