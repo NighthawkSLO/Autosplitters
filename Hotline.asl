@@ -159,7 +159,7 @@ startup
 		
 	settings.Add("igt", false, "Display IGT");
 	settings.SetToolTip("igt", "This setting does nothing, but I hereby inform you that the splitter will ALWAYS track IGT, so you can display it during full game runs by adding a timer that displays Game Time (as opposed to Real Time)");
-  
+	
 	settings.Add("death", false, "Track deaths in IGT");
 	settings.SetToolTip("death", "This setting will track how much time you lost to a death or a level restart and add it to your IGT");
 	
