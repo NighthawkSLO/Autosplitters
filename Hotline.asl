@@ -163,6 +163,10 @@ startup
 	settings.Add("death", false, "Track deaths in IGT");
 	settings.SetToolTip("death", "This setting will track how much time you lost to a death or a level restart and add it to your IGT");
 	
+	
+	settings.Add("grade", false, "Grade Screen");
+	settings.SetToolTip("grade", "Only times the grade screen (with the Exposure messages). For testing the grade screen glitch timesave.");
+	
 	// any%
 	vars.split1 = false;
 	vars.split2 = false;
@@ -244,9 +248,14 @@ start
 	}
 	
 	//	start ILs
-	if ((settings["IL"])&& current.time > 0 && vars.startRoom != 0){
+	if (settings["IL"] && current.time > 0 && vars.startRoom != 0){
 		vars.deathIGT = 0;
 		vars.maxTime = 0;
+		return true;
+	}
+	
+	// start Grade Screen
+	if (settings["grade"] && old.room == current.score_screen && current.room == current.grade_screen) {
 		return true;
 	}
 }
@@ -287,13 +296,13 @@ split
 		return true;
 	}
 	
-	//	split All Levels PARTS Urin/Jack - split at the end of Part screens
+	//	split All Levels PARTS - split at the end of Part screens
 	if (settings["AL_parts"]  && vars.gameRunning &&
 			vars.afterMetro == true && old.room == current.part_screen && current.room != current.part_screen) {
 		return true;
 	}
 	
-	//	split any% PARTS Urin	//
+	//	split any% PARTS	//
 	if (settings["any%_parts"] && vars.gameRunning) {
 		//	identify end of part
 		if (current.room == current.decadence1)	{vars.split1 = true;}
@@ -377,6 +386,10 @@ split
 	if (settings["IL_floor"] && old.room != current.room && current.room != current.ig_menu && old.room != current.ig_menu && vars.gameRunning) {
 		return true;
 	}
+	// split Grade Screen
+	if (settings["grade"] && old.grade == 0 && current.grade == 1){
+			return true;
+	}
 }
 
 isLoading
@@ -398,7 +411,7 @@ gameTime
 			vars.maxTime = current.time;
 		}
 		// clear death and maxTime at score screen
-		if (current.room != current.grade_screen && old.room == current.grade_screen) {
+		if ( (current.room != current.grade_screen && old.room == current.grade_screen) || current.room == current.main_menu) {
 			vars.deathIGT = 0;
 			vars.maxTime = 0;
 		}
