@@ -11,18 +11,18 @@ init
 	current.CGT = 0f;
 	current.Scene = -1;
 	current.KeyGotten = false;
+	current.GameFinished = false;
 
 	vars.Unity.TryOnLoad = (Func<dynamic, bool>)(helper =>
 	{
 		var gd = helper.GetClass("Assembly-CSharp", "GlobalData");
 		var gbfm = helper.GetClass("Assembly-CSharp", "GhostBossFightManager");
-		var bg = helper.GetClass("Assembly-CSharp", "BossGhost");
-
-		vars.BossGhostKeyGotten = bg["KeyGotten"];
 
 		vars.Unity.Make<float>(gd.Static, gd["CurrentGameTime"]).Name = "CurrentGameTime";
-		vars.Unity.Make<int>(gbfm.Static, gbfm["Instance"], gbfm["CurrentGhostIndex"]).Name = "CurrentGhostIndex";
-		vars.Unity.MakeList<IntPtr>(gbfm.Static, gbfm["Instance"], gbfm["Ghosts"]).Name = "Ghosts";
+
+		// dark magic provided by Ero#1111
+		// https://discord.com/channels/144133978759233536/144134231201808385/1012784545407434782
+		vars.Unity.Make<bool>(gbfm.Address, 0xD0, 0x8, 0x60, gbfm["Instance"], gbfm["Paused"]).Name = "GameFinished";
 
 		return true;
 	});
@@ -55,13 +55,7 @@ update
 	// counting up for a split second, once you are properly in main menu it forces it to 0
 	current.CGT = current.Scene == 1 ? 0f : Math.Max(current.CGT, vars.Unity["CurrentGameTime"].Current);
 
-	// handle final room ghost and key
-	if (current.Scene == 25) {
-		var ghosts = vars.Unity["Ghosts"].Current;
-		var cgi = vars.Unity["CurrentGhostIndex"].Current;
-
-		current.KeyGotten = memory.ReadValue<bool>((IntPtr)ghosts[cgi] + (int)vars.BossGhostKeyGotten);
-	}
+	current.GameFinished = vars.Unity["GameFinished"].Current;
 }
 
 start
@@ -73,7 +67,7 @@ start
 split
 {
 	if (current.Scene != old.Scene && current.Scene >= 3) return true;
-	if (current.Scene == 25 && current.KeyGotten && !old.KeyGotten) return true;
+	if (current.GameFinished && !old.GameFinished) return true;
 }
 
 reset
